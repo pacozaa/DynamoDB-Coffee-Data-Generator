@@ -2,12 +2,13 @@ import { ListTablesCommand, CreateTableCommand, DynamoDBClient } from "@aws-sdk/
 import { PutCommand, GetCommand, DynamoDBDocumentClient, BatchWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { CoffeeData, generateData, getHugeData } from "./generate";
 import { assert } from "console";
+import { sleep } from "./utils";
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
-const tableName = "EspressoDrinks";
+const tableName = "CoffeeMagic";
 
-export const main = async () => {
+export const ListTable = async () => {
     const command = new ListTablesCommand({});
 
     const response = await client.send(command);
@@ -43,25 +44,26 @@ export const CreateTable = async () => {
     return response;
 };
 
-export const PutItem = async () => {
+export const PutItem = async (coffeeData: CoffeeData) => {
     const command = new PutCommand({
         TableName: tableName,
-        Item: {
-            DrinkName: "Latte",
-            Ingredient: "milk"
-        },
+        Item: coffeeData,
     });
+    try{
 
     const response = await docClient.send(command);
     console.log({ put: response });
-    return response;
+    return response;}
+    catch(error){
+        console.log(error)
+    }
 };
 
-export const GetItemFromTable = async () => {
+export const GetItemFromTable = async (name: string) => {
     const command = new GetCommand({
         TableName: tableName,
         Key: {
-            DrinkName: "Latte"
+            DrinkName: name
         }
     });
 
@@ -70,9 +72,20 @@ export const GetItemFromTable = async () => {
     return response;
 };
 
+export const putBatchOfCoffeeOneByOne = async (size:number,sleepTime:number) => {
+    let coffeeList = getHugeData(size);
+    for(const coffee of coffeeList){
+        PutItem(coffee)
+        sleep(sleepTime)
+    }
+}
 
-export const pushBatchOfCoffee = async () => {
-    let coffeeList = getHugeData(5000);
+
+//   error: ProvisionedThroughputExceededException: 
+// The level of configured provisioned throughput for the table was exceeded. 
+// Consider increasing your provisioning level with the UpdateTable API.
+export const putBatchOfCoffee = async (size:number,sleepTime:number) => {
+    let coffeeList = getHugeData(size);
     const chunkSize = 20;
     const chunkArray = [];
     for (let i = 0; i < coffeeList.length; i += chunkSize) {
@@ -80,26 +93,43 @@ export const pushBatchOfCoffee = async () => {
         chunkArray.push(chunk)
     }
 
-    for (const chunk of chunkArray) {
-        const putRequests = chunk.map((coffee) => ({
-            PutRequest: {
-                Item: coffee,
-            },
-        }));
-        const command = new BatchWriteCommand({
-            RequestItems: {
-                [tableName]: putRequests,
-            },
-        });
+    try {
+        let count = 0;
+        for (const chunk of chunkArray) {
+            const putRequests = chunk.map((coffee) => ({
+                PutRequest: {
+                    Item: coffee,
+                },
+            }));
+            const command = new BatchWriteCommand({
+                RequestItems: {
+                    [tableName]: putRequests,
+                },
+            });
 
-        await docClient.send(command);
+            await docClient.send(command);
+            count++
+            console.log({batchNumber: count})
+            sleep(sleepTime)
+        }
+    } catch (error) {
+        console.log({ error })
     }
-    // console.log({coffeeList})
+
 }
+putBatchOfCoffee(2000,60000);
 
+// 1. CreateTable()
+// 2. ListTable()
+// 3. PutItem({
+//     DrinkName: "Porky Keanu",
+//     Ingredient: "Dark signature blend",
+//     Description: "Meaty coffee",
+//     CoffeeVolume: 80000000,
+//     Creator: "Keanu Reeves",
+//     Meat: "Pork"
+// })
+// 4. GetItemFromTable("Porky Keanu")
 
-// CreateTable()
-// main()
-// PutItem()
-// GetItemFromTable()
-// pushBatchOfCoffee()
+// 5. putBatchOfCoffee(2000,60000); // Tried to use batch write see if you have through put error
+// 6. putBatchOfCoffeeOneByOne() // Tried to put one by one

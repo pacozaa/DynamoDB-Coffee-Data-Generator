@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-
+import { v4 as uuidv4 } from 'uuid';
 
 export interface CoffeeData {
     DrinkName: string;
@@ -12,7 +12,7 @@ export interface CoffeeData {
 
 export const generateData=()=>{
     const coffeeMock: CoffeeData = {
-        DrinkName: faker.commerce.productName(),
+        DrinkName: faker.commerce.productName()+uuidv4(),
         Ingredient: faker.commerce.productMaterial(),
         Description: faker.commerce.productDescription(),
         Meat: faker.animal.type(),
