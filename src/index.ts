@@ -52,7 +52,7 @@ export const PutItem = async (coffeeData: CoffeeData) => {
     try{
 
     const response = await docClient.send(command);
-    console.log({ put: response });
+    // console.log({ put: response });
     return response;}
     catch(error){
         console.log(error)
@@ -68,22 +68,21 @@ export const GetItemFromTable = async (name: string) => {
     });
 
     const response = await docClient.send(command);
-    console.log({ get: response });
+    // console.log({ get: response });
     return response;
 };
 
 export const putBatchOfCoffeeOneByOne = async (size:number,sleepTime:number) => {
     let coffeeList = getHugeData(size);
+    let count = 0
     for(const coffee of coffeeList){
         PutItem(coffee)
-        sleep(sleepTime)
+        await sleep(sleepTime)
+        count++
+        console.log({putCount: count})
     }
 }
 
-
-//   error: ProvisionedThroughputExceededException: 
-// The level of configured provisioned throughput for the table was exceeded. 
-// Consider increasing your provisioning level with the UpdateTable API.
 export const putBatchOfCoffee = async (size:number,sleepTime:number) => {
     let coffeeList = getHugeData(size);
     const chunkSize = 20;
@@ -110,15 +109,14 @@ export const putBatchOfCoffee = async (size:number,sleepTime:number) => {
             await docClient.send(command);
             count++
             console.log({batchNumber: count})
-            sleep(sleepTime)
+            await sleep(sleepTime)
         }
     } catch (error) {
         console.log({ error })
     }
 
 }
-putBatchOfCoffee(2000,60000);
-
+// Steps - Uncomment and delete number
 // 1. CreateTable()
 // 2. ListTable()
 // 3. PutItem({
@@ -130,6 +128,5 @@ putBatchOfCoffee(2000,60000);
 //     Meat: "Pork"
 // })
 // 4. GetItemFromTable("Porky Keanu")
-
-// 5. putBatchOfCoffee(2000,60000); // Tried to use batch write see if you have through put error
-// 6. putBatchOfCoffeeOneByOne() // Tried to put one by one
+// 5. putBatchOfCoffee(2000,1000); //Fine tune the sleepTime number
+// 6. putBatchOfCoffeeOneByOne(2000,300) //Fine tune the sleepTime number
